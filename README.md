@@ -1,12 +1,14 @@
 # TDE Calculator
 
+🌐 **Language:** [🇨🇳 中文](ReadMe_zh.md) | [🇬🇧 English](README.md)
+
 **Threshold displacement energy + DPA calculator for alloy materials**
 
 An integrated toolkit that combines **LAMMPS molecular dynamics** (Byggmästar knock-on atom method) for threshold displacement energy (TDE) calculation, **convergence visualization**, and **DPA-to-cascade conversion** (NRT / ARC-DPA / CB-DPA analytical models).
 
 ![TDE Calculator Workflow](figures/workflow.svg)
 
-[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue)](https://python.org)[![LAMMPS](https://img.shields.io/badge/LAMMPS-2023-orange)](https://lammps.sandia.gov)[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()[![中文](https://img.shields.io/badge/中文-ReadMe-blue)](ReadMe_zh.md)
+[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue)](https://python.org)[![LAMMPS](https://img.shields.io/badge/LAMMPS-2023-orange)](https://lammps.sandia.gov)[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()
 
 ---
 
