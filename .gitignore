@@ -9,13 +9,13 @@ results/
 logs/
 dump_files/
 data.equilibrated.*
-rss_substitute.lmp
+/rss_substitute.lmp
 
 # ── Plot output (generated) ─────────────────────
-plot_Ed.png
+/plot_Ed.png
 
 # ── Statistics (generated) ──────────────────────
-Ed_summary.txt
+/Ed_summary.txt
 
 # ── OS files ────────────────────────────────────
 .DS_Store
