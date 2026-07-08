@@ -6,7 +6,7 @@ An integrated toolkit that combines **LAMMPS molecular dynamics** (Byggmästar k
 
 ![TDE Calculator Workflow](figures/workflow.svg)
 
-[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue)](https://python.org)[![LAMMPS](https://img.shields.io/badge/LAMMPS-2023-orange)](https://lammps.sandia.gov)[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()
+[![Python 3.7+](https://img.shields.io/badge/python-3.7%2B-blue)](https://python.org)[![LAMMPS](https://img.shields.io/badge/LAMMPS-2023-orange)](https://lammps.sandia.gov)[![License: MIT](https://img.shields.io/badge/license-MIT-green)]()[![中文](https://img.shields.io/badge/中文-ReadMe-blue)](ReadMe_zh.md)
 
 ---
 
