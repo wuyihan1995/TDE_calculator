@@ -248,14 +248,6 @@ TDE calculation for HfNbZrTiTa (RSS, 5 configs × 100 directions = 500 total, OV
 
 The calculated direction-averaged TDE ≈ 59.4 eV, in good agreement with reported literature values of ~62 eV (10.1016/j.ijplas.2024.104155, 10.1016/j.matlet.2020.127832).
 
-### DPA Calculation Example
-
-| Model | Partition | Nd | Cascades for 0.5 dpa |
-|-------|-----------|----|---------------------|
-| NRT | direct | 129.0 | 63 |
-| NRT | robinson | 93.1 | 86 |
-| CB-DPA | direct | 39.6 | 203 |
-| CB-DPA | robinson | 29.5 | 272 |
 
 ---
 
