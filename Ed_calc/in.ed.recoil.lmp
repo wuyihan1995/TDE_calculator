@@ -1,0 +1,157 @@
+#==============================================================================
+# in.ed.recoil.lmp - Single recoil simulation for Ed calculation
+#
+# Variables (passed from command line):
+#   EPKA     - PKA kinetic energy in eV
+#   DX,DY,DZ - Direction unit vector components
+#   MODEL    - "MA", "RSS", or "LCO"
+#   TEMP     - Temperature in K
+#   SIMTIME  - Simulation time in ps (e.g. 4.0)
+#   SEED     - Random seed for PKA selection (same seed => same PKA atom)
+#   DIR_IDX  - Direction index (for dump file naming)
+#   CONFIG   - Configuration index (for reading equilibrated data)
+#   DUMPDIR  - Directory for dump output files
+#   POTENTIAL - Potential file name
+#   ELEMENTS  - Element symbols for pair_coeff
+#
+# Output:
+#   ${DUMPDIR}/dump.recoil.c<CONFIG>.d<DIR_IDX>.e<EPKA>.init.gz  - initial state
+#   ${DUMPDIR}/dump.recoil.c<CONFIG>.d<DIR_IDX>.e<EPKA>.final.gz - final state
+#   stdout: "NDEFECTS: <count>" "CNA_DEFECTS: <count>" "PTM_DEFECTS: <count>" "PKA_TYPE: <type>"
+#==============================================================================
+ 
+units           metal
+boundary        p p p
+atom_style      atomic
+atom_modify     map array sort 5000 2
+ 
+ 
+##-- Read equilibrated state ---------------------------------------------------
+read_data       data.equilibrated.config_${CONFIG}
+ 
+ 
+##-- Potential setup -----------------------------------------------------------
+pair_style      eam/alloy
+pair_coeff      * * ${POTENTIAL} ${ELEMENTS}
+ 
+neighbor        2.0 bin
+neigh_modify    every 10 delay 10 check yes
+ 
+ 
+##-- Select PKA: random atom (deterministic by SEED) ---------------------------
+variable        IDchosen equal round(random(1,atoms,${SEED}))
+group           PKA id ${IDchosen}
+ 
+ 
+##-- Get PKA mass and type -----------------------------------------------------
+variable        atommass atom mass
+compute         pkamass PKA reduce max v_atommass
+variable        MaSS equal c_pkamass
+ 
+variable        atomtype atom type
+compute         pkatype PKA reduce max v_atomtype
+variable        PKAtype equal c_pkatype
+ 
+ 
+##-- Move PKA to center of simulation box --------------------------------------
+variable        xtmp equal -1*(xcm(PKA,x)-(xlo+xhi)/2)
+variable        ytmp equal -1*(xcm(PKA,y)-(ylo+yhi)/2)
+variable        ztmp equal -1*(xcm(PKA,z)-(zlo+zhi)/2)
+displace_atoms  all move ${xtmp} ${ytmp} ${ztmp} units box
+ 
+ 
+##-- Create displacement compute (stores reference positions) ------------------
+##  compute displace/atom records positions when first invoked.
+##  Including c_disp[4] in the initial dump forces invocation at run 0.
+compute         disp all displace/atom
+ 
+ 
+##-- Write initial state (reference for WS analysis) ---------------------------
+dump            1 all custom/gz 1 ${DUMPDIR}/dump.recoil.c${CONFIG}.d${DIR_IDX}.e${EPKA}.init.gz id type x y z c_disp[4]
+run             0
+undump          1
+ 
+ 
+##-- Set up thermostat border (10 A thick) -------------------------------------
+variable        tb equal 10
+variable        xbl equal xlo+${tb}
+variable        xbh equal xhi-${tb}
+variable        ybl equal ylo+${tb}
+variable        ybh equal yhi-${tb}
+variable        zbl equal zlo+${tb}
+variable        zbh equal zhi-${tb}
+region          nve_reg block ${xbl} ${xbh} ${ybl} ${ybh} ${zbl} ${zbh} units box
+group           nve_grp region nve_reg
+compute         tempnve nve_grp temp
+region          thermo_reg block ${xbl} ${xbh} ${ybl} ${ybh} ${zbl} ${zbh} units box side out
+group           thermo_grp subtract all nve_grp
+compute         MyTemp thermo_grp temp
+fix             therm_fix thermo_grp temp/rescale 5 ${TEMP} ${TEMP} 10 1.0
+fix_modify      therm_fix temp MyTemp
+ 
+ 
+##-- NVE + adaptive timestep ---------------------------------------------------
+fix             nve_fix all nve
+fix             dt_reset all dt/reset 1 0.0000001 0.001 0.05 units box
+ 
+ 
+##-- Calculate and apply PKA velocity ------------------------------------------
+##  Va = sqrt(2 * EPKA[eV] * 1.6e-19 / mass[kg]) * 1e10 * 1e-12  =>  A/ps
+variable        Va equal sqrt((${EPKA}*2*1.6*1e-19)/(${MaSS}/1e3/6.02/1e23))*1e10*1e-12
+variable        VX equal ${Va}*${DX}
+variable        VY equal ${Va}*${DY}
+variable        VZ equal ${Va}*${DZ}
+velocity        PKA set ${VX} ${VY} ${VZ} units box
+ 
+ 
+##-- Run simulation (up to SIMTIME ps or 10000 steps, whichever first) ---------
+thermo          100
+thermo_style    custom step temp pe ke etotal
+thermo_modify   lost warn
+variable        haltvar equal time
+fix             halt_check all halt 10 v_haltvar > ${SIMTIME} error continue
+run             10000
+unfix           halt_check
+ 
+ 
+##-- Detect defects: count atoms displaced > 1.0 A from reference --------------
+##  At 40 K, thermal RMS displacement ~0.05 A, so 1.0 A threshold is safe.
+##  A Frenkel pair (vacancy + interstitial) => at least 1 atom displaced > 1 A.
+variable        ndisp atom c_disp[4]>1.0
+compute         ndef all reduce sum v_ndisp
+variable        NDEF equal c_ndef
+run             0
+print           "NDEFECTS: ${NDEF}"
+ 
+##-- CNA defect detection (BCC=3, FCC=1; defect = non-structure) ---------------
+variable        expected_type equal 0
+if "${CRYSTAL_STRUCTURE} == bcc" then "variable expected_type equal 3"
+if "${CRYSTAL_STRUCTURE} == fcc" then "variable expected_type equal 1"
+compute         cna_all all cna/atom 3.5
+variable        is_cna_defect atom c_cna_all!=${expected_type}
+compute         cna_ndef all reduce sum v_is_cna_defect
+variable        CNA_NDEF equal c_cna_ndef
+run             0
+print           "CNA_DEFECTS: ${CNA_NDEF}"
+
+##-- PTM defect detection (BCC=3, FCC=1; RMSD threshold = 0.1) ------------------
+compute         ptm_all all ptm/atom default 0.1
+variable        is_ptm_defect atom c_ptm_all[1]!=${expected_type}
+compute         ptm_ndef all reduce sum v_is_ptm_defect
+variable        PTM_NDEF equal c_ptm_ndef
+run             0
+print           "PTM_DEFECTS: ${PTM_NDEF}"
+
+##-- Report PKA element type ---------------------------------------------------
+print           "PKA_TYPE: ${PKAtype}"
+
+
+##-- Write final state ---------------------------------------------------------
+dump            2 all custom/gz 1 ${DUMPDIR}/dump.recoil.c${CONFIG}.d${DIR_IDX}.e${EPKA}.final.gz id type x y z
+run             0
+undump          2
+ 
+ 
+##-- Summary -------------------------------------------------------------------
+variable        simtime equal time
+print           "RESULT: EPKA=${EPKA} DIR_IDX=${DIR_IDX} CONFIG=${CONFIG} PKA_TYPE=${PKAtype} MASS=${MaSS} TIME=${simtime} NDEFECTS=${NDEF} CNA_DEFECTS=${CNA_NDEF} PTM_DEFECTS=${PTM_NDEF}"

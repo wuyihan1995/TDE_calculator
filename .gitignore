@@ -1,0 +1,22 @@
+# ── Python ──────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# ── LAMMPS / simulation output (generated) ─────
+results/
+logs/
+dump_files/
+data.equilibrated.*
+rss_substitute.lmp
+
+# ── Plot output (generated) ─────────────────────
+plot_Ed.png
+
+# ── Statistics (generated) ──────────────────────
+Ed_summary.txt
+
+# ── OS files ────────────────────────────────────
+.DS_Store
+Thumbs.db
